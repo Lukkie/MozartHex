@@ -3,6 +3,7 @@ functor
 import
   Application(exit:Exit)
   System
+  Player at 'player.ozf'
   /* Browser(browse:Browse) */
   /* Array */
 
@@ -31,6 +32,10 @@ define
   {DisplayBoard NestedArray}
 
   % Create Players
+  /* Port1 = {Port.new }
+  {Player.start } */
+
+
 
   % Start game Loop
 
