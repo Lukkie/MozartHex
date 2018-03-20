@@ -15,8 +15,8 @@ define
     Red direction: Y
 
 **/
-  BOARD_SIZE = 11
-  {OS.srand 0}
+  BOARD_SIZE = 3
+  /* {OS.srand 0} */
 
 
 
@@ -108,49 +108,14 @@ define
     end
   end
 
-  /* proc {CheckSetVictory Set StartPresent EndPresent ?Victory}
-    case Set of Move|Sr then
-      case Move of move(x:X y:Y color:Color) then
-        if Color = 'Blue' then
-          if X == 0 then
-            if (EndPresent == true) Victory = true
-            else {CheckSetVictory Sr true EndPresent Victory}
-            end
-          elseif X == BOARD_SIZE-1 then
-            if (StartPresent == true) Victory = true
-            else {CheckSetVictory Sr StartPresent true Victory}
-            end
-          else
-            {CheckSetVictory Sr StartPresent EndPresent Victory}
-          end
-        else
-          if Y == 0 then
-            if (EndPresent == true) Victory = true
-            else {CheckSetVictory Sr true EndPresent Victory}
-            end
-          elseif Y == BOARD_SIZE-1 then
-            if (StartPresent == true) Victory = true
-            else {CheckSetVictory Sr StartPresent true Victory}
-            end
-          else
-            {CheckSetVictory Sr StartPresent EndPresent Victory}
-          end
-        end
-      end
-    [] nil then
-      Victory = false
-    end */
-
   proc {CheckSetVictory Set StartPresent EndPresent ?Victory}
     if {AndThen StartPresent EndPresent} then Victory = true
     else
-      case Set of Move|Sr then
-        case Move of move(x:X y:Y color:Color) then
-          if Color == 'Blue' then
-            {CheckSetVictory Sr X==0 X==BOARD_SIZE-1 Victory}
-          else % Color = 'Red'
-            {CheckSetVictory Sr Y==0 Y==BOARD_SIZE-1 Victory}
-          end
+      case Set of move(x:X y:Y color:Color)|Sr then
+        if Color == 'Blue' then
+          {CheckSetVictory Sr StartPresent orelse X==0 EndPresent orelse X==BOARD_SIZE-1 Victory}
+        else % Color = 'Red'
+          {CheckSetVictory Sr StartPresent orelse Y==0 EndPresent orelse Y==BOARD_SIZE-1 Victory}
         end
       [] nil then
         Victory = false
@@ -205,6 +170,7 @@ define
           if LocalWinner == false then
             {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort ?FinalBoard ?Winner}
           else
+            {Browse NewDisjointSets}
             Winner = CurrentPlayerColor
             FinalBoard = Board
           end
@@ -241,6 +207,18 @@ define
 
 
   /** Functor Player **/
+
+  proc {GenerateRandomMove MoveList Color ?Move}
+    local GeneratedMove in
+      GeneratedMove = move(x:{OS.rand} mod BOARD_SIZE y:{OS.rand} mod BOARD_SIZE color:Color)
+      local Exists in
+        {MoveExists MoveList GeneratedMove ?Exists}
+        if Exists then {GenerateRandomMove MoveList Color Move}
+        else Move = GeneratedMove end
+      end
+    end
+  end
+
   fun {PlayerProc}
     Sin in thread
       for Msg in Sin do
@@ -249,8 +227,10 @@ define
           Result = N1 + N2
         [] generateMove(MoveList Color Move) then
           % Initial version: Generate random move on position that is not yet occupied
-            
-            Move = move(x:{OS.rand} mod BOARD_SIZE y:{OS.rand} mod BOARD_SIZE color:Color)
+            {GenerateRandomMove MoveList Color Move}
+
+
+            /* Move = move(x:{OS.rand} mod BOARD_SIZE y:{OS.rand} mod BOARD_SIZE color:Color) */
           skip
         end
       end
