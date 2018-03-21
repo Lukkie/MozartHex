@@ -1,0 +1,82 @@
+(* Initial call *)
+alphabeta(origin, depth, -∞, +∞, TRUE)
+
+function alphabeta(MoveList, depth, alpha, beta, maximizingPlayer, TilesPlaced, TurnColor, OtherColor)
+
+     TwoDList := Transform MoveList to two-dimensional list    # Not very efficient I think, but still runs in O(Number_of_tiles)
+
+     if depth = 0 or TilesPlaced == BOARD_LENGTH * BOARD_LENGTH
+          Calculate Score
+          Return this score
+
+     if maximizingPlayer:
+         v := ~1000000
+
+         for Y in 0..BOARD_LENGTH-1 do
+            for X in 0..BOARD_LENGTH-1 do
+              if TwoDList is empty at (X, Y):
+
+                v := max(v, alphabeta( move(x,y,TurnColor)|MoveList) , depth-1, alpha, beta, false, TilesPlaced+1, TurnColor, OtherColor)
+                alpha := max(alpha, v)
+                if beta < alpha+1 (<= doesn't seem to work in Oz)
+                break both for loops
+         return v
+
+     else:
+         v := 1000000
+         for Y in 0..BOARD_LENGTH-1 do
+            for X in 0..BOARD_LENGTH-1 do
+              if TwoDList is empty at (X, Y):
+
+                v := min(v, alphabeta( move(x,y,OtherColor)|MoveList) , depth-1, alpha, beta, true, TilesPlaced+1, TurnColor, OtherColor)
+                beta := max(alpha, v)
+                if beta < alpha+1
+                break both for loops
+
+         return v
+
+
+
+
+
+ function MaximizePlayer(MoveList, depth, alpha, beta, TilesPlaced, TurnColor, OtherColor, CurrentV, V, AccumulatedTwoDList, X, Y)
+
+   local twoDList in
+     if AccumulatedTwoDList == nil then
+        TwoDList := Transform MoveList to two-dimensional list    # Not very efficient I think, but still runs in O(Number_of_tiles)
+     else twoDList = AccumulatedTwoDList
+
+
+     if depth = 0 or TilesPlaced == BOARD_LENGTH * BOARD_LENGTH
+          Calculate Score
+          Return this score i.e. V = Score
+
+     else
+          local NewV, MaxV, NewAlpha in
+
+            /** Determine score when move at X, Y is added **/
+            if TwoDList is empty at (X, Y):
+                MinimizePlayer(move(x,y,TurnColor)|MoveList), depth-1, alpha, beta, TilesPlaced+1, TurnColor, OtherColor, CurrentV, NewV, nil, 0, 0)
+                MaxV := max(CurrentV, NewV)
+                NewAlpha := max(alpha, MaxV)
+            else
+              NewAlpha = alpha
+              NewV = CurrentV
+              MaxV = CurrentV
+
+            /** Check next position, i.e. other move (if not pruned) **/
+            if beta > NewAlpha
+              if X < BOARD.LENGTH-1   // Next X-position
+                MaximizePlayer(MoveList, depth, NewAlpha, beta, TilesPlaced, TurnColor, OtherColor, MaxV, V, AccumulatedTwoDList, X+1, Y)
+              elseif X == BOARD.LENGTH-1 andthen Y != BOARD.LENGTH-1   // "CR LF"
+                MaximizePlayer(MoveList, depth, NewAlpha, beta, TilesPlaced, TurnColor, OtherColor, MaxV, V, AccumulatedTwoDList, 0, Y+1)
+              else
+                V = MaxV   // If whole board has been checked
+              end
+            else
+              V = MaxV // If tree was pruned
+            end
+   end
+
+
+SIMILAR FOR MinimizePlayer
