@@ -16,14 +16,54 @@ define
 
 **/
   BOARD_SIZE = 3
-  /* {OS.srand 0} */
+  BLUE_TAG = 'Blu'
+  RED_TAG = 'Red'
 
+% 5, 12
+  local Seed in
+    Seed = {OS.rand} mod 50
+    {System.showInfo Seed}
+    {OS.srand Seed}
+  end
+  /* {OS.srand 12} */
 
 
   /** Functor Referee **/
-  fun {AndThen BP1 BP2}
-    if BP1 then BP2
-    else false end
+
+  proc {PrintBoard Board BoardList}
+    if BoardList == nil then
+      local NewBoard in
+        {List.make BOARD_SIZE NewBoard}
+        for I in 1..BOARD_SIZE do
+          {List.make BOARD_SIZE {List.nth NewBoard I $}}
+        end
+        {PrintBoard Board NewBoard}
+      end
+    else
+      case Board of move(x:X y:Y color:C)|Br then
+        {List.nth {List.nth BoardList X+1} Y+1} = C
+        {PrintBoard Br BoardList}
+      [] nil then
+        % Generate output
+        for Y in 1..BOARD_SIZE do
+          for I in 0..Y-1 do
+            {System.printInfo '  '}
+          end
+          for X in 1..BOARD_SIZE do
+            local CurrentChar in
+              CurrentChar = {List.nth {List.nth BoardList X} Y}
+              /* {Browse CurrentChar} */
+              if {Value.isFree CurrentChar} then
+                {System.printInfo ' -  '}
+              else
+                {System.printInfo CurrentChar # ' '}
+              end
+            end
+          end
+          {System.printInfo '\n'}
+        end
+      end
+    end
   end
 
   fun {IsNeighbour Move1 Move2}
@@ -31,8 +71,8 @@ define
       case Move2 of move(x:X2 y:Y2 color:C2) then
         if C1 == C2 then
           if {Number.abs X1-X2} + {Number.abs Y1-Y2} < 2 then true
-          elseif {AndThen X1-X2==1 Y2-Y1==1} then true
-          elseif {AndThen X2-X1==1 Y1-Y2==1} then true
+          elseif X1-X2==1 andthen Y2-Y1==1 then true
+          elseif X2-X1==1 andthen Y1-Y2==1 then true
           else false end
         else false end
       end
@@ -47,15 +87,6 @@ define
       else
         {MoveBelongsToSet Move Sr ?IsInSet}
       end
-      /* case Move of move(x:XValue1 y:YValue1 color:_) then
-        case SetMove of move(x:XValue2 y:YValue2 color:_) then
-          if {Number.abs XValue1-XValue2} + {Number.abs YValue1-YValue2} < 2 then
-            IsInSet = true
-          else
-            {MoveBelongsToSet Move Sr ?IsInSet}
-          end
-        end
-      end */
     [] nil then
       IsInSet = false
     end
@@ -94,9 +125,9 @@ define
       Move: The move fopr which to check for duplicates
     **/
     case MoveList of M|Mr then
-      case M of move(x:X y:Y color:C) then
-        case Move of move(x:NewX y:NewY color:NewC) then
-          if {AndThen X==NewX Y==NewY} then
+      case M of move(x:X y:Y color:_) then
+        case Move of move(x:NewX y:NewY color:_) then
+          if X==NewX andthen Y==NewY then
             Exists = true
           else
             {MoveExists Mr Move Exists}
@@ -109,10 +140,10 @@ define
   end
 
   proc {CheckSetVictory Set StartPresent EndPresent ?Victory}
-    if {AndThen StartPresent EndPresent} then Victory = true
+    if StartPresent andthen EndPresent then Victory = true
     else
       case Set of move(x:X y:Y color:Color)|Sr then
-        if Color == 'Blue' then
+        if Color == BLUE_TAG then
           {CheckSetVictory Sr StartPresent orelse X==0 EndPresent orelse X==BOARD_SIZE-1 Victory}
         else % Color = 'Red'
           {CheckSetVictory Sr StartPresent orelse Y==0 EndPresent orelse Y==BOARD_SIZE-1 Victory}
@@ -162,6 +193,9 @@ define
           FinalBoard = Board
           Winner = NextPlayerColor
         else
+          % Print Board
+          {PrintBoard Move|Board nil}
+
           % Check if any user has won the game
           {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
           /* {Browse NewDisjointSets} */
@@ -170,7 +204,7 @@ define
           if LocalWinner == false then
             {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort ?FinalBoard ?Winner}
           else
-            {Browse NewDisjointSets}
+            /* {Browse NewDisjointSets} */
             Winner = CurrentPlayerColor
             FinalBoard = Board
           end
@@ -187,15 +221,8 @@ define
     Sin in thread
       for Msg in Sin do
         case Msg
-        of testGame(?Winner) then
-          for I in 0..5 do
-            {System.showInfo {Send Player2 addNumbers(I I $)}}
-            {Delay 500}
-          end
-          Winner = "Player 1"
-
-        [] startGame(?FinalBoard ?Winner) then
-          {PlayGame nil nil 'Red' Player1 'Blue' Player2 FinalBoard Winner}
+        of startGame(?FinalBoard ?Winner) then
+          {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 FinalBoard Winner}
         end
       end
     end
@@ -223,14 +250,9 @@ define
     Sin in thread
       for Msg in Sin do
         /* {Browse Msg} */
-        case Msg of addNumbers(N1 N2 ?Result) then
-          Result = N1 + N2
-        [] generateMove(MoveList Color Move) then
+        case Msg of generateMove(MoveList Color Move) then
           % Initial version: Generate random move on position that is not yet occupied
             {GenerateRandomMove MoveList Color Move}
-
-
-            /* Move = move(x:{OS.rand} mod BOARD_SIZE y:{OS.rand} mod BOARD_SIZE color:Color) */
           skip
         end
       end
@@ -256,7 +278,8 @@ define
   local FinalBoard Winner in
     {Send Referee startGame(FinalBoard Winner)} % Could also assign players here.
     {System.showInfo "Winner is " # Winner }
-    {Browse FinalBoard}
+    /* {Browse FinalBoard} */
+      { Exit 0 }
   end
 
 
