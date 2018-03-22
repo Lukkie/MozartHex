@@ -18,7 +18,7 @@ define
   BOARD_SIZE = 3
   BLUE_TAG = 'Blu'
   RED_TAG = 'Red'
-  SEARCH_DEPTH = 5
+  SEARCH_DEPTH = 2
 
 % 5, 12
   local Seed in
@@ -214,7 +214,6 @@ define
           % Check if any user has won the game
           {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
           /* {Browse NewDisjointSets} */
-
           {DetermineWinner NewDisjointSets ?LocalWinner}
           if LocalWinner == false then
             {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort ?FinalBoard ?Winner}
@@ -308,15 +307,86 @@ define
     if X >= Y then Y else X end
   end
 
-  proc {CalculateScore Board Color V}
+  proc {GenerateDisjointSets MoveList DisjointSets ?NewDisjointSets}
+    case MoveList of Move|Mr then
+      {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
+    end
+  end
+
+  proc {CheckSetVictoryPlayer Set StartPresent EndPresent LastColor ?Victory ?VictoryColor}  % Can this be simplified?
+    if StartPresent then
+      { System.showInfo 'StartPresent' }
+    end
+    if EndPresent then
+      { System.showInfo 'EndPresent' }
+    end
+
+    if StartPresent andthen EndPresent then
+      Victory = true
+      VictoryColor = LastColor
+    else
+      case Set of move(x:X y:Y color:Color)|Sr then
+        if Color == BLUE_TAG then
+          {CheckSetVictoryPlayer Sr StartPresent orelse X==0 EndPresent orelse X==BOARD_SIZE-1 Color Victory VictoryColor}
+        else % Color = 'Red'
+          {CheckSetVictoryPlayer Sr StartPresent orelse Y==0 EndPresent orelse Y==BOARD_SIZE-1 Color Victory VictoryColor}
+        end
+      [] nil then
+        Victory = false
+        VictoryColor = false
+      end
+    end
+  end
+
+  proc {DetermineWinnerPlayer DisjointSets ?GameOver ?Winner}
+    case DisjointSets of Set|DSr then
+      % Check if set has point at start and at end
+      local Victory VictoryColor in
+        {CheckSetVictoryPlayer Set false false nil Victory VictoryColor}
+        if Victory == false then
+          { DetermineWinnerPlayer DSr GameOver Winner }
+        else
+          /* {System.showInfo VictoryColor} */
+          GameOver = true
+          Winner = VictoryColor
+        end
+      end
+    [] nil then
+      GameOver = false
+      Winner = false
+    end
+  end
+
+  proc {CalculateScore MoveList Board Color Score}
     % TODO
     % Add points for: Victory (many points), safe connections, length of path
 
     % Deduct points for the same things but on opposite side
-    V = 1
+    /* V = 1 */
+
+    % Check if any user has won the game
+
+    local DisjointSets GameOver Winner in
+      {GenerateDisjointSets MoveList nil DisjointSets}
+      {DetermineWinnerPlayer DisjointSets GameOver Winner}
+      if GameOver then
+        if Winner == Color then
+          {System.showInfo 'test'}
+          Score = 100
+        else
+          {System.showInfo 'test2'}
+
+          Score = ~100
+        end
+      else
+        Score = 0
+      end
+    end
+
   end
 
   proc {MaximizePlayer MoveList Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList X Y}
+    {System.showInfo CurrentV}
     local TwoDList NewV MaxV NewAlpha in
       if AccumulatedTwoDList == nil then
         {MakeBoard MoveList TwoDList}
@@ -327,13 +397,10 @@ define
       if Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
         % CALCULATE SCORE TODO
         % V = ...
-        {CalculateScore AccumulatedTwoDList TurnColor V}
+        /* {System.showInfo 'Calculating score for MoveList of size ' # {List.length MoveList}} */
+        {CalculateScore MoveList AccumulatedTwoDList TurnColor V}
       else
         /** Determine score when move at X, Y is added **/
-        /* {Browse TwoDList}
-        {Browse X} */
-        /* {Browse {List.nth TwoDList X}} */
-        /* {Delay 2000} */
         if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
           {MinimizePlayer move(x:X y:Y color:TurnColor)|MoveList Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil 0 0}
           MaxV = {Max CurrentV NewV}
@@ -372,7 +439,8 @@ define
       if Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
         % CALCULATE SCORE TODO
         % V = ...
-        {CalculateScore AccumulatedTwoDList TurnColor V}
+        {System.showInfo 'Calculating score for MoveList of size ' # {List.length MoveList}}
+        {CalculateScore MoveList AccumulatedTwoDList TurnColor V}
       else
         /** Determine score when move at X, Y is added **/
         if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
