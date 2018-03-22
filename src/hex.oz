@@ -309,9 +309,12 @@ define
 
   proc {GenerateDisjointSets MoveList DisjointSets ?NewDisjointSets}
     case MoveList of Move|Mr then
-      {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
+      {GenerateDisjointSets Mr {AddMoveToDisjointSets Move DisjointSets Move|nil nil $} NewDisjointSets}
+    [] nil then
+      NewDisjointSets = DisjointSets
     end
   end
+
 
   proc {CheckSetVictoryPlayer Set StartPresent EndPresent LastColor ?Victory ?VictoryColor}  % Can this be simplified?
     if StartPresent then
@@ -339,6 +342,7 @@ define
   end
 
   proc {DetermineWinnerPlayer DisjointSets ?GameOver ?Winner}
+    {Browse DisjointSets}
     case DisjointSets of Set|DSr then
       % Check if set has point at start and at end
       local Victory VictoryColor in
