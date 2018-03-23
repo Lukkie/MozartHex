@@ -23,7 +23,7 @@ define
   BOARD_SIZE = 4
   BLUE_TAG = 'Blu'
   RED_TAG = 'Red'
-  SEARCH_DEPTH = 5
+  SEARCH_DEPTH = 3
 
 % 5, 12
   local Seed in
@@ -387,18 +387,57 @@ define
 
     % Deduct points for the same things but on opposite side
     % Check if any user has won the game
-    local GameOver Winner in
-      {DetermineWinnerPlayer DisjointSets GameOver Winner}
-      if GameOver then
-        if Winner == Color then
-          Score = 50
-        else
-          Score = ~50
-        end
-        /* {System.showInfo Score} */
-      else
-        Score = 0
+    local GameOver Winner VictoryScore LengthScore OtherLengthScore in
+      {CheckForVictory DisjointSets Color Depth VictoryScore} % Could be more efficient...
+      {CalculateLengthScore DisjointSets Color 0 LengthScore}
+      {CalculateLengthScore DisjointSets {GetOtherColor Color} 0 OtherLengthScore}
+      Score = VictoryScore + LengthScore - OtherLengthScore
+    end
+  end
+
+  proc {CalculateLengthScore DisjointSets Color CurrentBestLengthScoreAcc ?YScore}
+    case DisjointSets of Set|Sr then
+      % Determine highest and lowest value of axis, depending on which color
+      local CalculatedScore in
+        if Color == BLUE_TAG then
+          % Blue goes left to right: X value is important
+          {CalculateBlueLengthScore Set Color 1000000 ~1000000 CalculatedScore}
+          {CalculateLengthScore Sr Color {Max CalculatedScore CurrentBestLengthScoreAcc} ?YScore}
+
+        elseif Color == RED_TAG then
+        % Red goes up to down: Y value is important
+          {CalculateRedLengthScore Set Color 1000000 ~1000000 CalculatedScore}
+          {CalculateLengthScore Sr Color {Max CalculatedScore CurrentBestLengthScoreAcc} ?YScore}
+
+        else {System.showInfo 'This should not happen'} end
       end
+    [] nil then YScore = CurrentBestLengthScoreAcc
+    end
+  end
+
+  proc {CalculateRedLengthScore DisjointSet Color CurrentMinValue CurrentMaxValue ?LengthScore}
+    case DisjointSet of move(x:X y:Y color:C)|Sr then
+      if Color == C then
+        {CalculateRedLengthScore Sr Color {Min CurrentMinValue Y} {Max CurrentMaxValue Y} ?LengthScore}
+      else
+        % Looking at disjoint set of wrong color, just return score of 0
+        LengthScore = 0
+      end
+    [] nil then
+      LengthScore = CurrentMaxValue - CurrentMinValue
+    end
+  end
+
+  proc {CalculateBlueLengthScore DisjointSet Color CurrentMinValue CurrentMaxValue ?LengthScore}
+    case DisjointSet of move(x:X y:Y color:C)|Sr then
+      if Color == C then
+        {CalculateRedLengthScore Sr Color {Min CurrentMinValue X} {Max CurrentMaxValue X} ?LengthScore}
+      else
+        % Looking at disjoint set of wrong color, just return score of 0
+        LengthScore = 0
+      end
+    [] nil then
+      LengthScore = CurrentMaxValue - CurrentMinValue
     end
   end
 
@@ -412,7 +451,7 @@ define
           Score = (Depth + 1) * ~100
         end
 
-        {System.showInfo Score}
+        /* {System.showInfo Score} */
       else
         Score = 0
       end
@@ -431,7 +470,7 @@ define
       % Check for victory with current MoveList
       {CheckForVictory DisjointSets TurnColor Depth ?VictoryScore}
       if VictoryScore \= 0 then % Game is over
-        {System.showInfo VictoryScore}
+        /* {System.showInfo VictoryScore} */
         V = VictoryScore
       elseif Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
         % CALCULATE SCORE TODO
@@ -497,7 +536,7 @@ define
       % Check for victory with current MoveList
       {CheckForVictory DisjointSets TurnColor Depth ?VictoryScore}
       if VictoryScore \= 0 then % Game is over
-        {System.showInfo VictoryScore}
+        /* {System.showInfo VictoryScore} */
         V = VictoryScore
       elseif Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
         % CALCULATE SCORE TODO
