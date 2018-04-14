@@ -28,6 +28,7 @@ define
   RED_TAG = 'Red'
   DEFAULT_SEARCH_DEPTH = 3
 
+/** Random seed used for testing against random opponent, not in actual implementation **/
   local Seed in
     Seed = {OS.rand} mod 50
     {System.showInfo 'Seed: ' # Seed}
@@ -331,10 +332,60 @@ define
       {NewPort Sin}
     end
 
+    fun {GenerateSpiral CurrentSize Step Direction BoardSize}
+      local CenterX CenterY NewX NewY in
+        CenterX = BoardSize div 2
+        CenterY = BoardSize div 2
+
+        if CurrentSize == 0 then
+          move(x:CenterX y:CenterY) | {GenerateSpiral 1 0 0 BoardSize}
+        elseif CurrentSize < CenterX + 1 then
+
+          if Direction == 0 then
+            NewX = CenterX - CurrentSize + Step
+            NewY = CenterY - CurrentSize
+            if Step == 2*CurrentSize-1 then
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize 0 1 BoardSize}
+            else
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize Step+1 0 BoardSize}
+            end
+          elseif Direction == 1 then
+            NewX = CenterX + CurrentSize
+            NewY = CenterY - CurrentSize + Step
+            if Step == 2*CurrentSize-1 then
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize 0 2 BoardSize}
+            else
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize Step+1 1 BoardSize}
+            end
+          elseif Direction == 2 then
+            NewX = CenterX + CurrentSize - Step
+            NewY = CenterY + CurrentSize
+            if Step == 2*CurrentSize-1 then
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize 0 3 BoardSize}
+            else
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize Step+1 2 BoardSize}
+            end
+          elseif Direction == 3 then
+            NewX = CenterX - CurrentSize
+            NewY = CenterY + CurrentSize - Step
+            if Step == 2*CurrentSize-1 then
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize+1 0 0 BoardSize}
+            else
+              move(x:NewX y:NewY) | {GenerateSpiral CurrentSize Step+1 3 BoardSize}
+            end
+
+          end
+        else
+          nil
+        end
+      end
+    end
+
     proc {GenerateAlphaBetaMove MoveList Color ?Move ?V}
-      local DisjointSets BestMoveList in
+      local DisjointSets BestMoveList MoveOptions in
+        MoveOptions = {GenerateSpiral 0 0 0 BOARD_SIZE}
         {GenerateDisjointSets MoveList nil DisjointSets}
-        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil 0 0 nil Move nil BestMoveList}
+        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil MoveOptions MoveOptions nil Move nil BestMoveList}
         {System.showInfo V}
         /* {PrintBoard BestMoveList nil} */
       end
@@ -488,7 +539,7 @@ define
       end
     end
 
-    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList X Y CurrentMove ?BestMove CurrentList ?BestList} % TODO OriginalMoveList for debugging, should remove
+    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove ?BestMove CurrentList ?BestList} % TODO OriginalMoveList for debugging, should remove
       local VictoryScore TurnScore TwoDList NewDisjointSets NewV MaxV NewAlpha NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
@@ -506,76 +557,78 @@ define
           BestList = MoveList
           /* {System.showInfo V} */
         else
-          /** Determine score when move at X, Y is added **/
-          if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then  % O(n^2) --> Can be improved by passing partial lists instead of indices
-            NewMove = move(x:X y:Y color:TurnColor)
-            {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-            {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil 0 0 nil NextBestMove nil NewList} % NextBestMove is not used.
-            /* MaxV = {Max CurrentV NewV} */
-            if NewV > CurrentV then
-              MaxV = NewV
-              CurrentBestMove = NewMove
-              MaxList = NewList
+          case AvailableMoveOptions of move(x:X y:Y)|Mr then
+
+
+
+            /** Determine score when move at X, Y is added **/
+            if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then  % O(n^2) --> Can be improved by passing partial lists instead of indices
+              NewMove = move(x:X y:Y color:TurnColor)
+              {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
+              {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil MoveOptions MoveOptions nil NextBestMove nil NewList} % NextBestMove is not used.
+              /* MaxV = {Max CurrentV NewV} */
+              if NewV > CurrentV then
+                MaxV = NewV
+                CurrentBestMove = NewMove
+                MaxList = NewList
+              else
+                MaxV = CurrentV
+                CurrentBestMove = CurrentMove
+                MaxList = CurrentList
+              end
+              NewAlpha = {Max Alpha MaxV}
             else
+              NewAlpha = Alpha
+              NewV = CurrentV
               MaxV = CurrentV
               CurrentBestMove = CurrentMove
               MaxList = CurrentList
             end
-            NewAlpha = {Max Alpha MaxV}
-          else
-            NewAlpha = Alpha
-            NewV = CurrentV
-            MaxV = CurrentV
-            CurrentBestMove = CurrentMove
-            MaxList = CurrentList
-          end
 
-          /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
-          if Beta > NewAlpha then
-            if X < BOARD_SIZE-1 then
-              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList X+1 Y CurrentBestMove BestMove MaxList BestList}
-            elseif X == BOARD_SIZE-1 andthen Y < BOARD_SIZE-1 then
-              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList 0 Y+1 CurrentBestMove BestMove MaxList BestList}
+            /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
+            if Beta > NewAlpha then
+              if Mr == nil then
+                BestList = MaxList
+
+                % DEBUG
+                if Depth == SEARCH_DEPTH then
+                  /* {Browse V}
+                  {Browse BestMove} */
+                  {System.showInfo "\n\n\n"}
+                  {PrintBoard BestList nil}
+                end
+                %%%%%
+                V = MaxV  % If whole board has been checked
+                BestMove = CurrentBestMove
+              else
+                {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList Mr MoveOptions CurrentBestMove BestMove MaxList BestList}
+              end
             else
-
+              V = MaxV  % If tree was pruned
+              BestMove = CurrentBestMove
               BestList = MaxList
-
               % DEBUG
               if Depth == SEARCH_DEPTH then
                 /* {Browse V}
                 {Browse BestMove} */
-                {System.showInfo "\n\n\n"}
-
                 {PrintBoard BestList nil}
               end
               %%%%%
-              V = MaxV  % If whole board has been checked
-              BestMove = CurrentBestMove
             end
-          else
-            V = MaxV  % If tree was pruned
-            BestMove = CurrentBestMove
-            BestList = MaxList
-            % DEBUG
-            if Depth == SEARCH_DEPTH then
-              /* {Browse V}
-              {Browse BestMove} */
-              {PrintBoard BestList nil}
-            end
-            %%%%%
           end
         end
       end
     end
 
 
-    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList X Y CurrentMove ?BestMove CurrentList ?BestList}
+    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove ?BestMove CurrentList ?BestList}
       local VictoryScore TurnScore TwoDList NewDisjointSets NewV MinV NewBeta NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
         else
           TwoDList = AccumulatedTwoDList % For efficiency
         end
+
         % Check for victory with current MoveList
         {CheckForVictory DisjointSets TurnColor Depth ?VictoryScore}
 
@@ -586,63 +639,62 @@ define
           BestList = MoveList
           /* {System.showInfo V} */
         else
-          /** Determine score when move at X, Y is added **/
-          if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
-            NewMove = move(x:X y:Y color:OtherColor)
-            {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-            {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil 0 0 nil NextBestMove nil NewList}
-            /* MinV = {Min CurrentV NewV} */
-            if NewV < CurrentV then
-              MinV = NewV
-              CurrentBestMove = NewMove
-              MaxList = NewList
+          case AvailableMoveOptions of move(x:X y:Y)|Mr then
+            /** Determine score when move at X, Y is added **/
+            if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
+              NewMove = move(x:X y:Y color:OtherColor)
+              {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
+              {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil MoveOptions MoveOptions nil NextBestMove nil NewList}
+              /* MinV = {Min CurrentV NewV} */
+              if NewV < CurrentV then
+                MinV = NewV
+                CurrentBestMove = NewMove
+                MaxList = NewList
+              else
+                MinV = CurrentV
+                CurrentBestMove = CurrentMove
+                MaxList = CurrentList
+              end
+              NewBeta = {Max Alpha MinV}
             else
+              NewBeta = Beta
+              NewV = CurrentV
               MinV = CurrentV
               CurrentBestMove = CurrentMove
               MaxList = CurrentList
             end
-            NewBeta = {Max Alpha MinV}
-          else
-            NewBeta = Beta
-            NewV = CurrentV
-            MinV = CurrentV
-            CurrentBestMove = CurrentMove
-            MaxList = CurrentList
-          end
 
-          /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
-          if NewBeta > Alpha then
-            if X < BOARD_SIZE-1 then
-              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList X+1 Y CurrentBestMove BestMove MaxList BestList}
-            elseif X == BOARD_SIZE-1 andthen Y < BOARD_SIZE-1 then
-              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList 0 Y+1 CurrentBestMove BestMove MaxList BestList}
+            /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
+            if NewBeta > Alpha then
+              if Mr == nil then
+                BestList = MaxList
+
+                % DEBUG
+                if Depth == SEARCH_DEPTH then
+                  /* {Browse V}
+                  {Browse BestMove} */
+                  {System.showInfo "\n\n\n"}
+                  {PrintBoard BestList nil}
+                end
+                %%%%%
+                V = MinV  % If whole board has been checked
+                BestMove = CurrentBestMove
+              else
+                {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList Mr MoveOptions CurrentBestMove BestMove MaxList BestList}
+              end
             else
-
+              V = MinV  % If tree was pruned
+              BestMove = CurrentBestMove
               BestList = MaxList
 
               % DEBUG
               if Depth == SEARCH_DEPTH then
                 /* {Browse V}
                 {Browse BestMove} */
-                {System.showInfo "\n\n\n"}
                 {PrintBoard BestList nil}
               end
               %%%%%
-              V = MinV  % If whole board has been checked
-              BestMove = CurrentBestMove
             end
-          else
-            V = MinV  % If tree was pruned
-            BestMove = CurrentBestMove
-            BestList = MaxList
-
-            % DEBUG
-            if Depth == SEARCH_DEPTH then
-              /* {Browse V}
-              {Browse BestMove} */
-              {PrintBoard BestList nil}
-            end
-            %%%%%
           end
         end
       end
@@ -653,9 +705,9 @@ define
     /** Main thread **/
 
     Player1 = {PlayerProc} % Get this from functor
-    /* Player2 = {PlayerProc} % Get this from functor */
+    Player2 = {PlayerProc} % Get this from functor
     /* Player1 = {RandomPlayerProc} % Get this from functor */
-    Player2 = {RandomPlayerProc} % Get this from functor
+    /* Player2 = {RandomPlayerProc} % Get this from functor */
 
     % Assume Referee is also a thread
     Referee = {RefereeProc Player1 Player2} % Get this from functor
