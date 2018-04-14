@@ -1,8 +1,9 @@
 /**
-  TODO: Second chance for players after invalid move
   TODO: Safely connected
   TODO: Although we assume the opponent will always play in such way that it will stop your victories
           it will not always do this. Maybe don't assume a perfect opponent.
+  TODO: Initialize with a great starting position
+  TODO: Optimize for larger search depth
 */
 
 functor
@@ -22,10 +23,10 @@ define
     Red direction: Y
 
 **/
-  DEFAULT_BOARD_SIZE = 6
+  DEFAULT_BOARD_SIZE = 11
   BLUE_TAG = 'Blu'
   RED_TAG = 'Red'
-  DEFAULT_SEARCH_DEPTH = 4
+  DEFAULT_SEARCH_DEPTH = 3
 
   local Seed in
     Seed = {OS.rand} mod 50
@@ -210,7 +211,7 @@ define
       end
     end
 
-    proc {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort ?FinalBoard ?Winner}
+    proc {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt ?FinalBoard ?Winner}
       /**
         Board: List of move(x y color)  (will be sent to user)
         DisjointSets: List of disjoint sets (same info as Board, but a little more complex)
@@ -218,6 +219,7 @@ define
         CurrentPlayerPort: Port of player that has turn
         NextPlayerColor: Color of player that will have turn after this player
         NextPlayerPort: Port of player that will have turn after this player
+        Attempt: Int stating which attempt the player is on, starting at 0
         ?FinalBoard: Return the final state of the board, i.e. list of moves
         ?Winner: Return the color of the Winner
       **/
@@ -230,9 +232,14 @@ define
           % Iterate over list to see if x, y combo already exists
           /* {MoveExists Board Move ExistingMove} */
           if {MoveExists Board Move $} orelse {MoveOutOfBounds Move $} then
-            {System.showInfo 'Move is invalid'}
-            FinalBoard = Board
-            Winner = NextPlayerColor
+            if Attempt == 0 then
+              {System.showInfo 'Move is invalid, allowing one more try'}
+              {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt+1 ?FinalBoard ?Winner}
+            else
+              {System.showInfo 'Move is invalid for the second time -- Disqualified.'}
+              FinalBoard = Board
+              Winner = NextPlayerColor
+            end
           else
             % Print Board
             {PrintBoard Move|Board nil}
@@ -242,7 +249,7 @@ define
             /* {Browse NewDisjointSets} */
             {DetermineWinner NewDisjointSets ?LocalWinner}
             if LocalWinner == false then
-              {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort ?FinalBoard ?Winner}
+              {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 ?FinalBoard ?Winner}
             else
               /* {Browse NewDisjointSets} */
               Winner = CurrentPlayerColor
@@ -262,7 +269,7 @@ define
         for Msg in Sin do
           case Msg
           of startGame(?FinalBoard ?Winner) then
-            {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 FinalBoard Winner}
+            {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 0 FinalBoard Winner}
           end
         end
       end
