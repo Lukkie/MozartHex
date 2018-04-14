@@ -332,10 +332,11 @@ define
     end
 
     proc {GenerateAlphaBetaMove MoveList Color ?Move ?V}
-      local DisjointSets in
+      local DisjointSets BestMoveList in
         {GenerateDisjointSets MoveList nil DisjointSets}
-        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil 0 0 nil Move}
+        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil 0 0 nil Move nil BestMoveList}
         {System.showInfo V}
+        /* {PrintBoard BestMoveList nil} */
       end
     end
 
@@ -419,7 +420,8 @@ define
       local GameOver Winner VictoryScore LengthScore OtherLengthScore in
         {CalculateLengthScore DisjointSets Color 0 LengthScore}
         {CalculateLengthScore DisjointSets {GetOtherColor Color} 0 OtherLengthScore}
-        Score = 2 * LengthScore - OtherLengthScore
+        Score = LengthScore - 2*OtherLengthScore
+        /* Score = 2 * LengthScore - OtherLengthScore */
       end
     end
 
@@ -430,14 +432,14 @@ define
           if Color == BLUE_TAG then
             % Blue goes left to right: X value is important
             {CalculateBlueLengthScore Set Color 1000000 ~1000000 CalculatedScore}
-            {CalculateLengthScore Sr Color {Max CalculatedScore CurrentBestLengthScoreAcc} ?LengthScore}
 
           elseif Color == RED_TAG then
           % Red goes up to down: Y value is important
             {CalculateRedLengthScore Set Color 1000000 ~1000000 CalculatedScore}
-            {CalculateLengthScore Sr Color {Max CalculatedScore CurrentBestLengthScoreAcc} ?LengthScore}
+          end
 
-          else {System.showInfo 'This should not happen'} end
+          {CalculateLengthScore Sr Color {Max CalculatedScore CurrentBestLengthScoreAcc} ?LengthScore}
+
         end
       [] nil then LengthScore = CurrentBestLengthScoreAcc
       end
@@ -459,7 +461,7 @@ define
     proc {CalculateBlueLengthScore DisjointSet Color CurrentMinValue CurrentMaxValue ?LengthScore}
       case DisjointSet of move(x:X y:Y color:C)|Sr then
         if Color == C then
-          {CalculateRedLengthScore Sr Color {Min CurrentMinValue X} {Max CurrentMaxValue X} ?LengthScore}
+          {CalculateBlueLengthScore Sr Color {Min CurrentMinValue X} {Max CurrentMaxValue X} ?LengthScore}
         else
           % Looking at disjoint set of wrong color, just return score of 0
           LengthScore = 0
@@ -486,9 +488,8 @@ define
       end
     end
 
-    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList X Y CurrentMove ?BestMove} % TODO OriginalMoveList for debugging, should remove
-      /* {System.showInfo CurrentV} */
-      local VictoryScore TurnScore TwoDList NewDisjointSets NewV MaxV NewAlpha NewMove CurrentBestMove NextBestMove in
+    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList X Y CurrentMove ?BestMove CurrentList ?BestList} % TODO OriginalMoveList for debugging, should remove
+      local VictoryScore TurnScore TwoDList NewDisjointSets NewV MaxV NewAlpha NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
         else
@@ -502,20 +503,23 @@ define
           % CALCULATE SCORE
           {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth TurnScore}
           V = VictoryScore + TurnScore
+          BestList = MoveList
           /* {System.showInfo V} */
         else
           /** Determine score when move at X, Y is added **/
           if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then  % O(n^2) --> Can be improved by passing partial lists instead of indices
             NewMove = move(x:X y:Y color:TurnColor)
             {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-            {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil 0 0 nil NextBestMove} % NextBestMove is not used.
+            {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil 0 0 nil NextBestMove nil NewList} % NextBestMove is not used.
             /* MaxV = {Max CurrentV NewV} */
             if NewV > CurrentV then
               MaxV = NewV
               CurrentBestMove = NewMove
+              MaxList = NewList
             else
               MaxV = CurrentV
               CurrentBestMove = CurrentMove
+              MaxList = CurrentList
             end
             NewAlpha = {Max Alpha MaxV}
           else
@@ -523,26 +527,40 @@ define
             NewV = CurrentV
             MaxV = CurrentV
             CurrentBestMove = CurrentMove
+            MaxList = CurrentList
           end
 
           /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
           if Beta > NewAlpha then
             if X < BOARD_SIZE-1 then
-              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList X+1 Y CurrentBestMove BestMove}
+              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList X+1 Y CurrentBestMove BestMove MaxList BestList}
             elseif X == BOARD_SIZE-1 andthen Y < BOARD_SIZE-1 then
-              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList 0 Y+1 CurrentBestMove BestMove}
+              {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList 0 Y+1 CurrentBestMove BestMove MaxList BestList}
             else
+
+              BestList = MaxList
+
+              % DEBUG
+              if Depth == SEARCH_DEPTH then
+                /* {Browse V}
+                {Browse BestMove} */
+                {System.showInfo "\n\n\n"}
+
+                {PrintBoard BestList nil}
+              end
+              %%%%%
               V = MaxV  % If whole board has been checked
               BestMove = CurrentBestMove
             end
           else
             V = MaxV  % If tree was pruned
             BestMove = CurrentBestMove
-
+            BestList = MaxList
             % DEBUG
             if Depth == SEARCH_DEPTH then
-              {Browse V}
-              {Browse BestMove}
+              /* {Browse V}
+              {Browse BestMove} */
+              {PrintBoard BestList nil}
             end
             %%%%%
           end
@@ -551,8 +569,8 @@ define
     end
 
 
-    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList X Y CurrentMove ?BestMove}
-      local VictoryScore TurnScore TwoDList NewDisjointSets NewV MinV NewBeta NewMove CurrentBestMove NextBestMove in
+    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList X Y CurrentMove ?BestMove CurrentList ?BestList}
+      local VictoryScore TurnScore TwoDList NewDisjointSets NewV MinV NewBeta NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
         else
@@ -565,20 +583,23 @@ define
           % CALCULATE SCORE
           {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth TurnScore}
           V = VictoryScore + TurnScore
+          BestList = MoveList
           /* {System.showInfo V} */
         else
           /** Determine score when move at X, Y is added **/
           if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
             NewMove = move(x:X y:Y color:OtherColor)
             {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-            {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil 0 0 nil NextBestMove}
+            {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil 0 0 nil NextBestMove nil NewList}
             /* MinV = {Min CurrentV NewV} */
             if NewV < CurrentV then
               MinV = NewV
               CurrentBestMove = NewMove
+              MaxList = NewList
             else
               MinV = CurrentV
               CurrentBestMove = CurrentMove
+              MaxList = CurrentList
             end
             NewBeta = {Max Alpha MinV}
           else
@@ -586,26 +607,40 @@ define
             NewV = CurrentV
             MinV = CurrentV
             CurrentBestMove = CurrentMove
+            MaxList = CurrentList
           end
 
           /** Check next position, i.e. go to same level in search tree, but other move will be generated (if not pruned) **/
           if NewBeta > Alpha then
             if X < BOARD_SIZE-1 then
-              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList X+1 Y CurrentBestMove BestMove}
+              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList X+1 Y CurrentBestMove BestMove MaxList BestList}
             elseif X == BOARD_SIZE-1 andthen Y < BOARD_SIZE-1 then
-              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList 0 Y+1 CurrentBestMove BestMove}
+              {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList 0 Y+1 CurrentBestMove BestMove MaxList BestList}
             else
+
+              BestList = MaxList
+
+              % DEBUG
+              if Depth == SEARCH_DEPTH then
+                /* {Browse V}
+                {Browse BestMove} */
+                {System.showInfo "\n\n\n"}
+                {PrintBoard BestList nil}
+              end
+              %%%%%
               V = MinV  % If whole board has been checked
               BestMove = CurrentBestMove
             end
           else
             V = MinV  % If tree was pruned
             BestMove = CurrentBestMove
+            BestList = MaxList
 
             % DEBUG
             if Depth == SEARCH_DEPTH then
-              {Browse V}
-              {Browse BestMove}
+              /* {Browse V}
+              {Browse BestMove} */
+              {PrintBoard BestList nil}
             end
             %%%%%
           end
@@ -618,9 +653,9 @@ define
     /** Main thread **/
 
     Player1 = {PlayerProc} % Get this from functor
-    Player2 = {PlayerProc} % Get this from functor
+    /* Player2 = {PlayerProc} % Get this from functor */
     /* Player1 = {RandomPlayerProc} % Get this from functor */
-    /* Player2 = {RandomPlayerProc} % Get this from functor */
+    Player2 = {RandomPlayerProc} % Get this from functor
 
     % Assume Referee is also a thread
     Referee = {RefereeProc Player1 Player2} % Get this from functor
