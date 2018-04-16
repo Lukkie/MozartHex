@@ -1,2 +1,2 @@
 #!/bin/bash
-ozc -c *.oz && ozengine referee.ozf
+ozc -c *.oz && ozengine main.ozf

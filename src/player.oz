@@ -204,6 +204,8 @@ define
       end
     end
 
+
+    % For testing! Not used in final model.
     proc {GenerateRandomMove MoveList Color ?Move}
       local GeneratedMove in
         GeneratedMove = move(x:{OS.rand} mod BOARD_SIZE y:{OS.rand} mod BOARD_SIZE color:Color)

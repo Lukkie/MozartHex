@@ -76,6 +76,7 @@ define
     local Player1 Player2 RefereeThread in
       Player1 = {Player.player} % Get this from functor
       if RANDOM_OPPONENT then
+        % For tests against random opponent
         Player2 = {Player.randomPlayer} % Get this from functor
       else
         Player2 = {Player.player} % Get this from functor

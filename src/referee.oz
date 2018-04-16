@@ -92,7 +92,7 @@ define
                 end
               end
             end
-            {System.printInfo '\n'}
+            {System.showInfo '\n'}
           end
         end
       end
@@ -246,7 +246,9 @@ define
             end
           else
             % Print Board
+            /* {System.showInfo 'Printing board'} */
             {PrintBoard Move|Board nil}
+            /* {System.showInfo 'Finished printing board'} */
 
             % Check if any user has won the game
             {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
