@@ -73,6 +73,11 @@ define
 
     /** Main thread **/
 
+    fun {GetOtherColor Color}
+      if Color == BLUE_TAG then RED_TAG
+      else BLUE_TAG end
+    end
+
     local Player1 Player2 RefereeThread in
       Player1 = {Player.player} % Get this from functor
       if RANDOM_OPPONENT then
@@ -87,9 +92,14 @@ define
       RefereeThread = {Referee.referee Player1 Player2} % Get this from functor
 
 
-      local FinalBoard Winner in
-        {Send RefereeThread startGame(FinalBoard Winner)} % Could also assign players here.
-        {System.showInfo "Winner is " # Winner }
+      local FinalBoard Winner Swapped in
+        {Send RefereeThread startGame(FinalBoard Winner Swapped)} % Could also assign players here.
+
+        if Swapped then
+          {System.showInfo 'Winner is ' # Winner # ' after having swapped. Starting color was ' # {GetOtherColor Winner}}
+        else
+          {System.showInfo 'Winner is ' # Winner # ' which was also his original color'}
+        end
       end
     end
 

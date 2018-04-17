@@ -215,7 +215,7 @@ define
       end
     end
 
-    proc {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt ?FinalBoard ?Winner}
+    proc {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt TurnsUntilSwap ?FinalBoard ?Winner ?Swapped}
       /**
         Board: List of move(x y color)  (will be sent to user)
         DisjointSets: List of disjoint sets (same info as Board, but a little more complex)
@@ -224,58 +224,84 @@ define
         NextPlayerColor: Color of player that will have turn after this player
         NextPlayerPort: Port of player that will have turn after this player
         Attempt: Int stating which attempt the player is on, starting at 0
+        TurnsUntilSwap: Selfexplanatory, initialize as -1
         ?FinalBoard: Return the final state of the board, i.e. list of moves
         ?Winner: Return the color of the Winner
+        ?Swapped: Returns true if the colors were swapped during the game, false otherwise
       **/
-      % Ask next player for move
-      local Move NewDisjointSets LocalWinner in
-        {Send CurrentPlayerPort generateMove(Board CurrentPlayerColor Move)}
-        % Check validity of move
-        case Move of move(x:X y:Y color:C) then
-          {System.showInfo 'Move at x:' # X # ' y:' # Y # ' color:' # C}
-          % Iterate over list to see if x, y combo already exists
-          /* {MoveExists Board Move ExistingMove} */
-          if {MoveExists Board Move $} orelse {MoveOutOfBounds Move $} then
-            if Attempt == 0 then
-              {System.showInfo 'Move is invalid, allowing one more try'}
-              {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt+1 ?FinalBoard ?Winner}
+      if TurnsUntilSwap == 0 then
+        /** Turns have to be swapped right now **/
+        /** This means that ports are swapped, and the following player object can now play (again, but with different color) **/
+        {System.showInfo ' ---- COLORS SWAPPED -----'}
+        ?Swapped = true
+        {PlayGame Board DisjointSets CurrentPlayerColor NextPlayerPort NextPlayerColor CurrentPlayerPort Attempt ~2 ?FinalBoard ?Winner ?Swapped}
+      else
+        % Ask next player for move
+        local Move NewDisjointSets LocalWinner in
+          {Send CurrentPlayerPort generateMove(Board CurrentPlayerColor TurnsUntilSwap Move)}
+          % Check validity of move
+          case Move of move(x:X y:Y color:C) then
+            {System.showInfo 'Move at x:' # X # ' y:' # Y # ' color:' # C}
+            % Iterate over list to see if x, y combo already exists
+            /* {MoveExists Board Move ExistingMove} */
+            if {MoveExists Board Move $} orelse {MoveOutOfBounds Move $} then
+              if Attempt == 0 then
+                {System.showInfo 'Move is invalid, allowing one more try'}
+                {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt+1 TurnsUntilSwap ?FinalBoard ?Winner ?Swapped}
+              else
+                {System.showInfo 'Move is invalid for the second time -- Disqualified.'}
+                FinalBoard = Board
+                Winner = NextPlayerColor
+              end
             else
-              {System.showInfo 'Move is invalid for the second time -- Disqualified.'}
-              FinalBoard = Board
-              Winner = NextPlayerColor
-            end
-          else
-            % Print Board
-            /* {System.showInfo 'Printing board'} */
-            {PrintBoard Move|Board nil}
-            /* {System.showInfo 'Finished printing board'} */
+              % Print Board
+              {PrintBoard Move|Board nil}
 
-            % Check if any user has won the game
-            {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
-            /* {Browse NewDisjointSets} */
-            {DetermineWinner NewDisjointSets ?LocalWinner}
-            if LocalWinner == false then
-              {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 ?FinalBoard ?Winner}
-            else
-              /* {Browse NewDisjointSets} */
-              Winner = CurrentPlayerColor
-              FinalBoard = Board
+              % Update Disjoint Sets
+              {AddMoveToDisjointSets Move DisjointSets Move|nil nil NewDisjointSets}
+
+              if TurnsUntilSwap == ~1 then /** Only happens when red has played its first move **/
+                /* Ask swap information to blue player */
+                local NumberOfTurns in
+                  {Send NextPlayerPort swapRequest(Move ?NumberOfTurns)}
+                  %if NumberOfTurns == 1 then /** Swap immediately **/
+                  %  /** Switch colors and set TurnsUntilSwap to -2 **/
+                  %  {System.showInfo ' ---- COLORS SWAPPED -----'}
+                  %  {PlayGame Move|Board NewDisjointSets CurrentPlayerColor NextPlayerPort NextPlayerColor CurrentPlayerPort 0 ~2 ?FinalBoard ?Winner}
+                  % elseif NumberOfTurns > 1 andthen NumberOfTurns < 7 then /** Swap sometime soon **/
+                  if NumberOfTurns > 0 andthen NumberOfTurns < 7 then /** Swap sometime soon **/
+                    /** Keep colors for now, and set TurnsUntilSwap to NumberOfTurns-1 **/
+                    {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 NumberOfTurns-1 ?FinalBoard ?Winner ?Swapped}
+                  else /** NumberOfTurns is negative or very large, in either case, the turn will never be swapped **/
+                    /** Keep colors (for ever) and set TurnsUntilSwap to BOARD_SIZE * BOARD_SIZE **/
+                    ?Swapped = false
+                    {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 BOARD_SIZE*BOARD_SIZE ?FinalBoard ?Winner ?Swapped}
+                  end
+                end
+              else
+                % Check if any user has won the game
+                {DetermineWinner NewDisjointSets ?LocalWinner}
+                if LocalWinner == false then
+                  {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 TurnsUntilSwap-1 ?FinalBoard ?Winner ?Swapped}
+                else
+                  /* {Browse NewDisjointSets} */
+                  Winner = CurrentPlayerColor
+                  FinalBoard = Board
+                end
+              end
             end
+
           end
-
         end
       end
-      % Assign values of FinalBoard and Winner if game is over
-      /* FinalBoard = Board
-      Winner = 'Blue' */
     end
 
     fun {RefereeProc Player1 Player2}
       Sin in thread
         for Msg in Sin do
           case Msg
-          of startGame(?FinalBoard ?Winner) then
-            {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 0 FinalBoard Winner}
+          of startGame(?FinalBoard ?Winner ?Swapped) then
+            {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 0 ~1 FinalBoard Winner Swapped}
           end
         end
       end

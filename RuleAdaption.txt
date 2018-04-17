@@ -1,0 +1,69 @@
+Parameter meegeven aan PlayGame: turns until swap:
+--> Als turns = -1, en color = blue --> Blue player will decide turns value
+
+
+Send message to blue player on first turn of RED player (check for NumberOfTurns value of -1)
+swapRequest(Board ?NumberOfTurns) (Board could also just be a single move)
+--> Player fills in numberOfTurns: 
+	--> NumberOfTurns if blue wants to keep blue: zero or negative
+	--> NumberOfTurns if blue wants to be red: # number of turns until swap
+--> Referee checks this value (check happens ONLY when swapRequest was sent)
+	--> numberOfTurns is between 1 and 6 OR lower/equal 1 ---> In other words: Less than 7
+--> Referee fills in accumulator in PlayGame function which holds the number of turns until swap: TurnsUntilSwap
+	--> Each turn, this number is decreased by one
+--> When the accumulator hits 0, the next PlayGame call will use SWITCHED COLORS (as usual) but SAME PORTS, set NumberOfTurns to -3 (IMPORTANT because -1 represents start of game and -2 is the value when blue player first plays)
+		Same ports does not really matter in the scenario where both players are identical, but it does matter when different clients play against each other.
+--> When the accumulator is less than -1, just keep 
+--> At the end of the game, instead of just pronouncing the winner color, you also say what his original color was (its swapped if accumulator is less than -1)
+
+
+Whenever a move needs to be generated, the number of turns until swap is passed as accumulator as well (pass TurnsUntilSwap)
+--> Value for first move (by RED) = 0
+--> Value for move if turn will be swapped later: some positive number between 1 and 6
+--> Value for move if turn will not be swapped: 0 or any negative number
+
+
+Player will play to win when this accumulator is 0 or below
+Player will play to lose when this accumulator is higher than 0
+
+
+
+
+E.g. 1 turn (border-case scenario):
+- RED plays
+- TurnsUntilSwap = -1: BLU is given the option to swap
+- BLU says it wants turns to be swapped immediately: ?NumberOfTurns = 1
+- Referee checks whether this number is valid (if not: default value is no swap)
+- Referee checks if the NumberOfTurns = 1:
+	This is the case: Call PlayGame but with switched colors and same ports, also set TurnsUntilSwap to -2
+- This check happens in an IF clause (where TurnsUntilSwap = -1 is checked), normal code should happen in the ELSE clause
+- BLU plays (but it's the same port, so actually same player as turn 1)
+
+
+E.g. 2 turns:
+- RED's turn
+- BLU sets ?NumberOfTurns = 2
+- Referee checks validity of NumberOfTurns
+- Referee checks if NumberOfTurns = 1
+	This is not the case, so check if it's less than 1
+		This is not the case: Call PlayGame but with TurnsUntilSwap equal to NumberOfTurns-1
+- BLU's turn
+- Referee checks TurnsUntilSwap==0, which is false (it's 1)
+- BLU plays like normal (but now trying to lose)
+- Call PlayGame{like usual but TurnsUntilSwap-1}
+- RED's turn
+- Referee checks TurnsUntilSwap==0, which is true (it's 0)
+- Referee  IMMEDIATELY calls PlayGame again, but with switched colors and same ports, and TurnsUntilSwap = -2
+- Rest of code is ignored (in else clause)
+- BLU's turn (same port object as previous turn RED)
+- Referee checks TurnsUntilSwap==0, which is false (it's -2)
+- BLU plays like normal and will try to win
+
+E.g. Never swap:
+- RED plays
+- BLU sets ?NumberOfTurns to zero or something negative
+	- Referee checks validity of NumberOfTurns
+	- Referee checks if NumberOfTurns = 1
+		This is not the case, so check if it's less than 1
+			This is the case, so call PlayGame with TurnsUntilSwap equal to BOARD_SIZE * BOARD_SIZE
+- BLU plays

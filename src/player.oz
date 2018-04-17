@@ -64,15 +64,17 @@ define
       Sin in thread
         for Msg in Sin do
           /* {Browse Msg} */
-          case Msg of generateMove(MoveList Color Move) then
+          case Msg of generateMove(MoveList Color TurnsUntilSwap Move) then
             % Initial version: Generate random move on position that is not yet occupied
+              {System.showInfo 'Turns until swap: ' # TurnsUntilSwap}
               local V in
                 {GenerateAlphaBetaMove MoveList Color ?Move ?V}
                 /* {Browse Color}
                 {Browse V}
                 {Browse Move} */
               end
-            skip
+          [] swapRequest(Move ?NumberOfTurns) then
+              {SwapRequest Move ?NumberOfTurns}
           end
         end
       end
@@ -83,10 +85,11 @@ define
       Sin in thread
         for Msg in Sin do
           /* {Browse Msg} */
-          case Msg of generateMove(MoveList Color Move) then
+          case Msg of generateMove(MoveList Color TurnsUntilSwap Move) then
             % Initial version: Generate random move on position that is not yet occupied
               {GenerateRandomMove MoveList Color Move}
-            skip
+          [] swapRequest(Move ?NumberOfTurns) then
+              {SwapRequest Move ?NumberOfTurns}
           end
         end
       end
@@ -588,6 +591,12 @@ define
           end
         end
       end
+    end
+
+    proc {SwapRequest Move ?NumberOfTurns}
+      /* NumberOfTurns = 0 */
+      /* NumberOfTurns = 1 */
+      NumberOfTurns = 6
     end
 
     /** End of functor Player **/
