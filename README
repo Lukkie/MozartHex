@@ -1,0 +1,31 @@
+Lukas Vanhoucke
+
+===== Oz version =====
+Mozart 2.0
+
+===== Compilation =====
+./make.sh
+
+===== Command line arguments =====
+--search_depth (default = 3) --> Defines the search depth for my algorithm
+--board_size (default = 11) --> Defines the dimensions of the board
+--debug --> Verbose output and debug strings
+--random_opponent --> Blue will be a random player (only for testing and evaluation)
+
+
+===== Functors =====
+Import the functors like this:
+
+import
+  Referee at 'referee.ozf'
+  Player at 'player.ozf'
+  
+  
+There are three additional threads: one for each player, and one for the referee. 
+The main.oz program starts these three threads as follows:
+
+Player1 = {Player.player}
+Player2 = {Player.player}
+RefereeThread = {Referee.referee Player1 Player2}
+
+
