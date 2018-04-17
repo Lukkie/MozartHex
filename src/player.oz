@@ -30,14 +30,16 @@ define
   BLUE_TAG = 'Blu'
   RED_TAG = 'Red'
   DEFAULT_SEARCH_DEPTH = 3
+  DEFAULT_SWAP_TURN_VALUE = 6
 
 
-  local BOARD_SIZE SEARCH_DEPTH DEBUG in
+  local BOARD_SIZE SEARCH_DEPTH DEBUG SWAP_TURN_VALUE in
 
     Args = {GetArgs record('search_depth'(single type:int)
                            'board_size'(single type:int)
                            'debug'(single)
                            'random_opponent'(single)
+                           'swap'(single type:int)
                            )}
 
     if {Value.hasFeature Args 'search_depth'} then
@@ -56,6 +58,12 @@ define
       DEBUG = true
     else
       DEBUG = false
+    end
+
+    if {Value.hasFeature Args 'swap'} then
+      SWAP_TURN_VALUE = Args.swap
+    else
+      SWAP_TURN_VALUE = DEFAULT_SWAP_TURN_VALUE
     end
 
     /** Functor Player **/
@@ -596,7 +604,7 @@ define
     proc {SwapRequest Move ?NumberOfTurns}
       /* NumberOfTurns = 0 */
       /* NumberOfTurns = 1 */
-      NumberOfTurns = 6
+      NumberOfTurns = SWAP_TURN_VALUE
     end
 
     /** End of functor Player **/

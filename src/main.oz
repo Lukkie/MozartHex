@@ -45,6 +45,7 @@ define
                            'board_size'(single type:int)
                            'debug'(single)
                            'random_opponent'(single)
+                           'swap'(single type:int)
                             )}
 
     if {Value.hasFeature Args 'search_depth'} then
