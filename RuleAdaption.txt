@@ -53,7 +53,7 @@ E.g. 2 turns:
 - Call PlayGame{like usual but TurnsUntilSwap-1}
 - RED's turn
 - Referee checks TurnsUntilSwap==0, which is true (it's 0)
-- Referee  IMMEDIATELY calls PlayGame again, but with switched colors and same ports, and TurnsUntilSwap = -2
+- Referee  IMMEDIATELY calls PlayGame again, but with same colors and switched ports, and TurnsUntilSwap = -2
 - Rest of code is ignored (in else clause)
 - BLU's turn (same port object as previous turn RED)
 - Referee checks TurnsUntilSwap==0, which is false (it's -2)
