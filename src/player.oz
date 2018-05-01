@@ -76,7 +76,11 @@ define
             % Initial version: Generate random move on position that is not yet occupied
               {System.showInfo 'Turns until swap: ' # TurnsUntilSwap}
               local V in
-                {GenerateAlphaBetaMove MoveList Color ?Move ?V}
+                if TurnsUntilSwap > 0 andthen TurnsUntilSwap < 7 then
+                  {GenerateAlphaBetaMove MoveList Color ~1 ?Move ?V}
+                else
+                  {GenerateAlphaBetaMove MoveList Color 1 ?Move ?V}
+                end
                 /* {Browse Color}
                 {Browse V}
                 {Browse Move} */
@@ -282,11 +286,12 @@ define
       end
     end
 
-    proc {GenerateAlphaBetaMove MoveList Color ?Move ?V}
+    proc {GenerateAlphaBetaMove MoveList Color Direction ?Move ?V}
+    % Direction = 1 if trying to maximize score, else use -1
       local DisjointSets BestMoveList MoveOptions in
         MoveOptions = {GenerateSpiral 0 0 0 BOARD_SIZE}
         {GenerateDisjointSets MoveList nil DisjointSets}
-        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil MoveOptions MoveOptions nil Move nil BestMoveList}
+        {MaximizePlayer MoveList DisjointSets SEARCH_DEPTH ~1000000 1000000 {List.length MoveList} Color {GetOtherColor Color} ~1000000 V nil MoveOptions MoveOptions nil Direction Move nil BestMoveList}
         {System.showInfo V}
         /* {PrintBoard BestMoveList nil} */
       end
@@ -363,7 +368,8 @@ define
       end
     end
 
-    proc {CalculateScore DisjointSets Board Color Depth Score}
+    proc {CalculateScore DisjointSets Board Color Depth Direction ?Score}
+      % If Direction = -1, return the opposite score! This is used when trying to do a worthless move, otherwise Direction = 1
       % TODO
       % Add points for: Victory (many points), safe connections, length of path
 
@@ -372,7 +378,7 @@ define
       local LengthScore OtherLengthScore in
         {CalculateLengthScore DisjointSets Color 0 LengthScore}
         {CalculateLengthScore DisjointSets {GetOtherColor Color} 0 OtherLengthScore}
-        Score = LengthScore - 2*OtherLengthScore
+        Score = Direction * (LengthScore - 2*OtherLengthScore)
         /* Score = 2 * LengthScore - OtherLengthScore */
       end
     end
@@ -440,7 +446,7 @@ define
       end
     end
 
-    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove ?BestMove CurrentList ?BestList} % TODO OriginalMoveList for debugging, should remove
+    proc {MaximizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV ?V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove Direction ?BestMove CurrentList ?BestList} % TODO OriginalMoveList for debugging, should remove
       local VictoryScore TurnScore TwoDList NewDisjointSets NewV MaxV NewAlpha NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
@@ -453,7 +459,7 @@ define
 
         if VictoryScore \= 0 orelse Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
           % CALCULATE SCORE
-          {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth TurnScore}
+          {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth Direction TurnScore}
           V = VictoryScore + TurnScore
           BestList = MoveList
           /* {System.showInfo V} */
@@ -466,7 +472,7 @@ define
             if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then  % O(n^2) --> Can be improved by passing partial lists instead of indices
               NewMove = move(x:X y:Y color:TurnColor)
               {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-              {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil MoveOptions MoveOptions nil NextBestMove nil NewList} % NextBestMove is not used.
+              {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil MoveOptions MoveOptions nil Direction NextBestMove nil NewList} % NextBestMove is not used.
               /* MaxV = {Max CurrentV NewV} */
               if NewV > CurrentV then
                 MaxV = NewV
@@ -502,7 +508,7 @@ define
                 V = MaxV  % If whole board has been checked
                 BestMove = CurrentBestMove
               else
-                {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList Mr MoveOptions CurrentBestMove BestMove MaxList BestList}
+                {MaximizePlayer MoveList DisjointSets Depth NewAlpha Beta TilesPlaced TurnColor OtherColor MaxV V TwoDList Mr MoveOptions CurrentBestMove Direction BestMove MaxList BestList}
               end
             else
               V = MaxV  % If tree was pruned
@@ -522,7 +528,7 @@ define
     end
 
 
-    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove ?BestMove CurrentList ?BestList}
+    proc {MinimizePlayer MoveList DisjointSets Depth Alpha Beta TilesPlaced TurnColor OtherColor CurrentV V AccumulatedTwoDList AvailableMoveOptions MoveOptions CurrentMove Direction ?BestMove CurrentList ?BestList}
       local VictoryScore TurnScore TwoDList NewDisjointSets NewV MinV NewBeta NewMove CurrentBestMove NextBestMove NewList MaxList in
         if AccumulatedTwoDList == nil then
           {MakeBoard MoveList TwoDList}
@@ -535,7 +541,7 @@ define
 
         if VictoryScore \= 0 orelse Depth == 0 orelse TilesPlaced == BOARD_SIZE * BOARD_SIZE then
           % CALCULATE SCORE
-          {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth TurnScore}
+          {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth Direction TurnScore}
           V = VictoryScore + TurnScore
           BestList = MoveList
           /* {System.showInfo V} */
@@ -545,7 +551,7 @@ define
             if {Value.isFree {List.nth {List.nth TwoDList X+1} Y+1}} then
               NewMove = move(x:X y:Y color:OtherColor)
               {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
-              {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil MoveOptions MoveOptions nil NextBestMove nil NewList}
+              {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil MoveOptions MoveOptions nil Direction NextBestMove nil NewList}
               /* MinV = {Min CurrentV NewV} */
               if NewV < CurrentV then
                 MinV = NewV
@@ -581,7 +587,7 @@ define
                 V = MinV  % If whole board has been checked
                 BestMove = CurrentBestMove
               else
-                {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList Mr MoveOptions CurrentBestMove BestMove MaxList BestList}
+                {MinimizePlayer MoveList DisjointSets Depth Alpha NewBeta TilesPlaced TurnColor OtherColor MinV V TwoDList Mr MoveOptions CurrentBestMove Direction BestMove MaxList BestList}
               end
             else
               V = MinV  % If tree was pruned

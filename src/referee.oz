@@ -63,6 +63,11 @@ define
 
     /** Functor Referee **/
 
+    fun {GetOtherColor Color}
+      if Color == BLUE_TAG then RED_TAG
+      else BLUE_TAG end
+    end
+
     proc {PrintBoard Board BoardList}
       if BoardList == nil then
         local NewBoard in
@@ -301,8 +306,16 @@ define
       Sin in thread
         for Msg in Sin do
           case Msg
-          of startGame(?FinalBoard ?Winner ?Swapped) then
-            {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 0 ~1 FinalBoard Winner Swapped}
+          of startGame() then
+            local FinalBoard Winner Swapped in
+              {PlayGame nil nil RED_TAG Player1 BLUE_TAG Player2 0 ~1 FinalBoard Winner Swapped}
+              if Swapped then
+                {System.showInfo 'Winner is ' # Winner # ' after having swapped. Starting color was ' # {GetOtherColor Winner}}
+              else
+                {System.showInfo 'Winner is ' # Winner # ' which was also his original color'}
+              end
+              { Exit 0 }
+            end
           end
         end
       end
