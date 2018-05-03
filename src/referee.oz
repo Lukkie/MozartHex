@@ -72,14 +72,6 @@ define
       end
     end
 
-    fun {TransformMyMoveToTheirs MyMove}
-      /* My moves have range between 0 and BOARD_LENGTH - 1
-      Other people's moves start at 1 and end at BOARD_LENGTH */
-      case MyMove of move(x:X y:Y color:C) then
-        move(x:X+1 y:Y+1 color:C)
-      end
-    end
-
     fun {GetListOfLists BoardList}
       local ListOfLists in
         {List.make BOARD_SIZE ListOfLists}
