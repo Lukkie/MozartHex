@@ -26,8 +26,9 @@ define
 
 **/
   DEFAULT_BOARD_SIZE = 11
-  BLUE_TAG = 'Blu'
-  RED_TAG = 'Red'
+  BLUE_TAG = blue
+  RED_TAG = red
+  NONE_TAG = empty
   DEFAULT_SEARCH_DEPTH = 3
 
 
@@ -57,6 +58,59 @@ define
     else
       DEBUG = false
     end
+
+
+
+
+
+    /** Code to transform board and moves (for interoperability with other players) **/
+    fun {TransformTheirMoveToMine TheirMove}
+      /* My moves have range between 0 and BOARD_LENGTH - 1
+      Other people's moves start at 1 and end at BOARD_LENGTH */
+      case TheirMove of move(x:X y:Y color:C) then
+        move(x:X-1 y:Y-1 color:C)
+      end
+    end
+
+    fun {TransformMyMoveToTheirs MyMove}
+      /* My moves have range between 0 and BOARD_LENGTH - 1
+      Other people's moves start at 1 and end at BOARD_LENGTH */
+      case MyMove of move(x:X y:Y color:C) then
+        move(x:X+1 y:Y+1 color:C)
+      end
+    end
+
+    fun {GetListOfLists BoardList}
+      local ListOfLists in
+        {List.make BOARD_SIZE ListOfLists}
+        for Y in 1..BOARD_SIZE do
+          local XList in
+            {List.make BOARD_SIZE XList}
+            for X in 1..BOARD_SIZE do
+              {List.nth XList X} = {DoesBoardListContain BoardList X Y}
+            end
+            {List.nth ListOfLists Y} = XList
+          end
+        end
+        ListOfLists
+      end
+    end
+
+    fun {DoesBoardListContain BoardList X Y}
+    /** X and Y are offset by one in my code! **/
+      case BoardList of move(x:MoveX y:MoveY color:MoveColor)|BoardListRest then
+        if X == MoveX+1 andthen Y == MoveY+1 then
+          MoveColor
+        else
+          {DoesBoardListContain BoardListRest X Y}
+        end
+      [] nil then
+        NONE_TAG
+      end
+    end
+    /*****************************************************************/
+
+
 
 
 
@@ -243,8 +297,16 @@ define
         {PlayGame Board DisjointSets CurrentPlayerColor NextPlayerPort NextPlayerColor CurrentPlayerPort Attempt ~2 ?FinalBoard ?Winner ?Swapped}
       else
         % Ask next player for move
-        local Move NewDisjointSets LocalWinner in
-          {Send CurrentPlayerPort generateMove(Board CurrentPlayerColor TurnsUntilSwap Move)}
+        local TheirBoard GeneratedMove Move NewDisjointSets LocalWinner in
+          % Transform my board representation to theirs
+          TheirBoard = {GetListOfLists Board}
+
+          % Ask for move
+          {Send CurrentPlayerPort generateMove(TheirBoard CurrentPlayerColor TurnsUntilSwap GeneratedMove)}
+
+          % Transform their move to my representation
+          Move = {TransformTheirMoveToMine GeneratedMove}
+
           % Check validity of move
           case Move of move(x:X y:Y color:C) then
             {System.showInfo 'Move at x:' # X # ' y:' # Y # ' color:' # C}
@@ -269,12 +331,7 @@ define
               if TurnsUntilSwap == ~1 then /** Only happens when red has played its first move **/
                 /* Ask swap information to blue player */
                 local NumberOfTurns in
-                  {Send NextPlayerPort swapRequest(Move ?NumberOfTurns)}
-                  %if NumberOfTurns == 1 then /** Swap immediately **/
-                  %  /** Switch colors and set TurnsUntilSwap to -2 **/
-                  %  {System.showInfo ' ---- COLORS SWAPPED -----'}
-                  %  {PlayGame Move|Board NewDisjointSets CurrentPlayerColor NextPlayerPort NextPlayerColor CurrentPlayerPort 0 ~2 ?FinalBoard ?Winner}
-                  % elseif NumberOfTurns > 1 andthen NumberOfTurns < 7 then /** Swap sometime soon **/
+                  {Send NextPlayerPort swapRequest(GeneratedMove ?NumberOfTurns)} % Use GeneratedMove for their representation
                   if NumberOfTurns > 0 andthen NumberOfTurns < 7 then /** Swap sometime soon **/
                     /** Keep colors for now, and set TurnsUntilSwap to NumberOfTurns-1 **/
                     {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 NumberOfTurns-1 ?FinalBoard ?Winner ?Swapped}

@@ -27,8 +27,9 @@ define
 
 **/
   DEFAULT_BOARD_SIZE = 11
-  BLUE_TAG = 'Blu'
-  RED_TAG = 'Red'
+  BLUE_TAG = blue
+  RED_TAG = red
+  NONE_TAG = empty /** Used by others **/
   DEFAULT_SEARCH_DEPTH = 3
   DEFAULT_SWAP_TURN_VALUE = 6
 
@@ -72,21 +73,22 @@ define
       Sin in thread
         for Msg in Sin do
           /* {Browse Msg} */
-          case Msg of generateMove(MoveList Color TurnsUntilSwap Move) then
+          case Msg of generateMove(Board Color TurnsUntilSwap Move) then
             % Initial version: Generate random move on position that is not yet occupied
               {System.showInfo 'Turns until swap: ' # TurnsUntilSwap}
-              local V in
+              local V GeneratedMove MoveList in
+                MoveList = {GetListOfMoves Board 1 1} /* Transforming their board to my representation */
+
                 if TurnsUntilSwap > 0 andthen TurnsUntilSwap < 7 then
-                  {GenerateAlphaBetaMove MoveList Color ~1 ?Move ?V}
+                  {GenerateAlphaBetaMove MoveList Color ~1 ?GeneratedMove ?V}
                 else
-                  {GenerateAlphaBetaMove MoveList Color 1 ?Move ?V}
+                  {GenerateAlphaBetaMove MoveList Color 1 ?GeneratedMove ?V}
                 end
-                /* {Browse Color}
-                {Browse V}
-                {Browse Move} */
+
+                Move = {TransformMyMoveToTheirs GeneratedMove}
               end
           [] swapRequest(Move ?NumberOfTurns) then
-              {SwapRequest Move ?NumberOfTurns}
+              {SwapRequest {TransformTheirMoveToMine Move} ?NumberOfTurns}
           end
         end
       end
@@ -97,19 +99,67 @@ define
       Sin in thread
         for Msg in Sin do
           /* {Browse Msg} */
-          case Msg of generateMove(MoveList Color TurnsUntilSwap Move) then
+          case Msg of generateMove(Board Color TurnsUntilSwap Move) then
             % Initial version: Generate random move on position that is not yet occupied
-              {GenerateRandomMove MoveList Color Move}
+            local GeneratedMove MoveList in
+              MoveList = {GetListOfMoves Board 1 1} /* Transforming their board to my representation */
+              {GenerateRandomMove MoveList Color ?GeneratedMove}
+              Move = {TransformMyMoveToTheirs GeneratedMove}
+            end
           [] swapRequest(Move ?NumberOfTurns) then
-              {SwapRequest Move ?NumberOfTurns}
+              {SwapRequest {TransformTheirMoveToMine Move} ?NumberOfTurns}
           end
         end
       end
       {NewPort Sin}
     end
 
+    /** Code to transform board and move **/
+    fun {TransformTheirMoveToMine TheirMove}
+      /* My moves have range between 0 and BOARD_LENGTH - 1
+      Other people's moves start at 1 and end at BOARD_LENGTH */
+      case TheirMove of move(x:X y:Y color:C) then
+        move(x:X-1 y:Y-1 color:C)
+      end
+    end
+
+    fun {TransformMyMoveToTheirs MyMove}
+      /* My moves have range between 0 and BOARD_LENGTH - 1
+      Other people's moves start at 1 and end at BOARD_LENGTH */
+      case MyMove of move(x:X y:Y color:C) then
+        move(x:X+1 y:Y+1 color:C)
+      end
+    end
+
+    fun {GetListOfMoves Board X Y}
+      /* Transform (their) list of lists into (my) list of moves */
+      /* Initialize with X = 1 and Y = 1 */
+      /* Go over Board step by step, see if position contains something,
+      and add this to the list of moves procedurally */
+      /* Row-column notation for Y-X */
+      local NewX NewY in
+
+        if X == BOARD_SIZE then
+          NewX = 1
+          NewY = Y+1
+        else
+          NewX = X+1
+          NewY = Y
+        end
+
+        if Y == BOARD_SIZE+1 then
+          nil
+        elseif {List.nth {List.nth Board Y} X} == NONE_TAG then
+          {GetListOfMoves Board NewX NewY}
+        else
+          move(x:X-1 y:Y-1 color:{List.nth {List.nth Board Y} X}) | {GetListOfMoves Board NewX NewY}
+        end
+      end
+    end
 
 
+
+    /** Original code **/
     proc {PrintBoard Board BoardList}
       if BoardList == nil then
         local NewBoard in

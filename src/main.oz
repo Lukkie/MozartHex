@@ -26,8 +26,8 @@ define
 
 **/
   DEFAULT_BOARD_SIZE = 11
-  BLUE_TAG = 'Blu'
-  RED_TAG = 'Red'
+  BLUE_TAG = blue
+  RED_TAG = red
   DEFAULT_SEARCH_DEPTH = 3
 
 /** Random seed used for testing against random opponent, not in actual implementation **/
