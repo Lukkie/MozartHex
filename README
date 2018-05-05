@@ -11,7 +11,7 @@ Mozart 2.0
 --board_size (default = 11) --> Defines the dimensions of the board
 --debug --> Verbose output and debug strings
 --random_opponent --> Blue will be a random player (only for testing and evaluation)
-
+--swap (default = 6) --> Fixed value for the turn on which the second player will swap
 
 ===== Functors =====
 Import the functors like this:
