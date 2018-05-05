@@ -1,17 +1,9 @@
-/**
-  TODO: Safely connected
-  TODO: Although we assume the opponent will always play in such way that it will stop your victories
-          it will not always do this. Maybe don't assume a perfect opponent.
-  TODO: Initialize with a great starting position
-  TODO: Optimize for larger search depth
-*/
-
 functor
 import
-  Application(exit:Exit getArgs:GetArgs)
+  Application(getArgs:GetArgs)
   System
   OS
-  Browser(browse:Browse)
+  /* Browser(browse:Browse) */
   Referee at 'referee.ozf'
   Player at 'player.ozf'
 define
@@ -26,8 +18,6 @@ define
 
 **/
   DEFAULT_BOARD_SIZE = 11
-  BLUE_TAG = blue
-  RED_TAG = red
   DEFAULT_SEARCH_DEPTH = 3
 
 /** Random seed used for testing against random opponent, not in actual implementation **/
