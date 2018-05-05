@@ -20,13 +20,12 @@ define
   DEFAULT_BOARD_SIZE = 11
   DEFAULT_SEARCH_DEPTH = 3
 
-/** Random seed used for testing against random opponent, not in actual implementation **/
+/** Random seed only used for testing against random opponent, not in actual player implementation **/
   local Seed in
     Seed = {OS.rand} mod 50
     {System.showInfo 'Seed: ' # Seed}
     {OS.srand Seed}
   end
-  /* {OS.srand 41} */
 
 
   local BOARD_SIZE SEARCH_DEPTH DEBUG RANDOM_OPPONENT in
@@ -72,7 +71,6 @@ define
       else
         Player2 = {Player.player} % Get this from functor
       end
-      /* Player1 = {Player.randomPlayer} % Get this from functor */
 
       % Assume Referee is also a thread
       RefereeThread = {Referee.referee Player1 Player2} % Get this from functor
@@ -81,10 +79,6 @@ define
       {Send RefereeThread startGame()} % Could also assign players here.
 
     end
-
   end % End of local variables SEARCH_DEPTH and BOARD_SIZE
-
-  /* {Delay 500}
-  { Exit 0 } */
 
 end

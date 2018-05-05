@@ -76,9 +76,7 @@ define
     fun {PlayerProc}
       Sin in thread
         for Msg in Sin do
-          /* {Browse Msg} */
           case Msg of generateMove(Board Color TurnsUntilSwap Move) then
-            % Initial version: Generate random move on position that is not yet occupied
               {System.showInfo 'Turns until swap: ' # TurnsUntilSwap}
               local V GeneratedMove MoveList in
                 MoveList = {GetListOfMoves Board 1 1} /* Transforming their board to my representation */
@@ -194,7 +192,7 @@ define
       end
     end
 
-    proc {MakeBoard MoveList /*BoardList*/ ?Board}
+    proc {MakeBoard MoveList ?Board}
     /**
       Converts list of moves into a 2-dimensional array of shape BOARD_SIZExBOARD_SIZE
     **/
@@ -228,7 +226,6 @@ define
 
     proc {CalculateScore DisjointSets Board Color Depth Direction ?Score}
       % If Direction = -1, return the opposite score! This is used when trying to do a worthless move, otherwise Direction = 1
-      % TODO
       % Add points for: Victory (many points), safe connections, length of path
 
       % Deduct points for the same things but on opposite side
@@ -237,7 +234,6 @@ define
         {CalculateLengthScore DisjointSets Color 0 LengthScore}
         {CalculateLengthScore DisjointSets {GetOtherColor Color} 0 OtherLengthScore}
         Score = Direction * (LengthScore - 2*OtherLengthScore)
-        /* Score = 2 * LengthScore - OtherLengthScore */
       end
     end
 
@@ -296,8 +292,6 @@ define
           else
             Score = (Depth + 1) * ~100
           end
-
-          /* {System.showInfo Score} */
         else
           Score = 0
         end
@@ -320,7 +314,6 @@ define
           {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth Direction TurnScore}
           V = VictoryScore + TurnScore
           BestList = MoveList
-          /* {System.showInfo V} */
         else
           case AvailableMoveOptions of move(x:X y:Y)|Mr then
 
@@ -331,7 +324,6 @@ define
               NewMove = move(x:X y:Y color:TurnColor)
               {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
               {MinimizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor 1000000 NewV nil MoveOptions MoveOptions nil Direction NextBestMove nil NewList} % NextBestMove is not used.
-              /* MaxV = {Max CurrentV NewV} */
               if NewV > CurrentV then
                 MaxV = NewV
                 CurrentBestMove = NewMove
@@ -357,8 +349,6 @@ define
 
                 % DEBUG
                 if DEBUG andthen Depth == SEARCH_DEPTH then
-                  /* {Browse V}
-                  {Browse BestMove} */
                   {System.showInfo "\n\n\n"}
                   {PrintBoard BestList nil}
                 end
@@ -374,8 +364,6 @@ define
               BestList = MaxList
               % DEBUG
               if DEBUG andthen Depth == SEARCH_DEPTH then
-                /* {Browse V}
-                {Browse BestMove} */
                 {PrintBoard BestList nil}
               end
               %%%%%
@@ -402,7 +390,6 @@ define
           {CalculateScore DisjointSets AccumulatedTwoDList TurnColor Depth Direction TurnScore}
           V = VictoryScore + TurnScore
           BestList = MoveList
-          /* {System.showInfo V} */
         else
           case AvailableMoveOptions of move(x:X y:Y)|Mr then
             /** Determine score when move at X, Y is added **/
@@ -410,7 +397,6 @@ define
               NewMove = move(x:X y:Y color:OtherColor)
               {AddMoveToDisjointSets NewMove DisjointSets NewMove|nil nil NewDisjointSets}
               {MaximizePlayer NewMove|MoveList NewDisjointSets Depth-1 Alpha Beta TilesPlaced+1 TurnColor OtherColor ~1000000 NewV nil MoveOptions MoveOptions nil Direction NextBestMove nil NewList}
-              /* MinV = {Min CurrentV NewV} */
               if NewV < CurrentV then
                 MinV = NewV
                 CurrentBestMove = NewMove
@@ -436,8 +422,6 @@ define
 
                 % DEBUG
                 if DEBUG andthen Depth == SEARCH_DEPTH then
-                  /* {Browse V}
-                  {Browse BestMove} */
                   {System.showInfo "\n\n\n"}
                   {PrintBoard BestList nil}
                 end
@@ -454,8 +438,6 @@ define
 
               % DEBUG
               if DEBUG andthen Depth == SEARCH_DEPTH then
-                /* {Browse V}
-                {Browse BestMove} */
                 {PrintBoard BestList nil}
               end
               %%%%%
@@ -466,15 +448,8 @@ define
     end
 
     proc {SwapRequest Move ?NumberOfTurns}
-      /* NumberOfTurns = 0 */
-      /* NumberOfTurns = 1 */
       NumberOfTurns = SWAP_TURN_VALUE
     end
 
-    /** End of functor Player **/
-
-
   end % End of local variables SEARCH_DEPTH and BOARD_SIZE
-
-
 end

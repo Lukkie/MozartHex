@@ -100,7 +100,6 @@ define
           case Move of move(x:X y:Y color:C) then
             {System.showInfo 'Move at x:' # X # ' y:' # Y # ' color:' # C}
             % Iterate over list to see if x, y combo already exists
-            /* {MoveExists Board Move ExistingMove} */
             if {MoveExists Board Move $} orelse {MoveOutOfBounds Move $} then
               if Attempt == 0 then
                 {System.showInfo 'Move is invalid, allowing one more try'}
@@ -136,7 +135,6 @@ define
                 if GameOver == false then
                   {PlayGame Move|Board NewDisjointSets NextPlayerColor NextPlayerPort CurrentPlayerColor CurrentPlayerPort 0 TurnsUntilSwap-1 ?FinalBoard ?Winner ?Swapped}
                 else
-                  /* {Browse NewDisjointSets} */
                   Winner = CurrentPlayerColor
                   FinalBoard = Board
                 end

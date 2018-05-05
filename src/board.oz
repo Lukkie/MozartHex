@@ -29,7 +29,6 @@ define
   **/
   DEFAULT_BOARD_SIZE = 11
   BLUE_TAG = blue
-  /* RED_TAG = red */
   NONE_TAG = empty /** Used by others **/
   DEFAULT_SEARCH_DEPTH = 3
   DEFAULT_SWAP_TURN_VALUE = 6
@@ -165,7 +164,6 @@ define
             for X in 1..BOARD_SIZE do
               local CurrentChar in
                 CurrentChar = {List.nth {List.nth BoardList X} Y}
-                /* {Browse CurrentChar} */
                 if {Value.isFree CurrentChar} then
                   {System.printInfo ' -  '}
                 else
@@ -292,7 +290,6 @@ define
           if Victory == false then
             { DetermineWinner DSr GameOver Winner }
           else
-            /* {System.showInfo VictoryColor} */
             GameOver = true
             Winner = VictoryColor
           end
