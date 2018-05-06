@@ -4,7 +4,7 @@ import
   System
   /* Browser(browse:Browse) */
   Board(  transformTheirMoveToMine:TransformTheirMoveToMine
-          getListOfLists:GetListOfLists
+          transformMyBoardToTheirs:TransformMyBoardToTheirs
           printBoard:PrintBoard
           addMoveToDisjointSets:AddMoveToDisjointSets
           moveExists:MoveExists
@@ -87,9 +87,8 @@ define
       else
         % Ask next player for move
         local TheirBoard GeneratedMove Move NewDisjointSets GameOver LocalWinner in
-          % Transform my board representation to theirs
-          TheirBoard = {GetListOfLists Board}
-
+          /* Offset x and y by one for compatibility with other users */
+          TheirBoard = {TransformMyBoardToTheirs Board}
           % Ask for move
           {Send CurrentPlayerPort generateMove(TheirBoard CurrentPlayerColor TurnsUntilSwap GeneratedMove)}
 
@@ -106,8 +105,9 @@ define
                 {PlayGame Board DisjointSets CurrentPlayerColor CurrentPlayerPort NextPlayerColor NextPlayerPort Attempt+1 TurnsUntilSwap ?FinalBoard ?Winner ?Swapped}
               else
                 {System.showInfo 'Move is invalid for the second time -- Disqualified.'}
-                FinalBoard = Board
                 Winner = NextPlayerColor
+                FinalBoard = Board
+                Swapped = TurnsUntilSwap < 0
               end
             else
               % Print Board

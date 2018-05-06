@@ -1,2 +1,2 @@
 #!/bin/bash
-ozc -c *.oz && ozengine main.ozf
+ozc -c board.oz && ozc -c player.oz && ozc -c referee.oz && ozc -c main.oz

@@ -12,7 +12,7 @@ import
   /* Browser(browse:Browse) */
   Board( transformTheirMoveToMine:TransformTheirMoveToMine
           transformMyMoveToTheirs:TransformMyMoveToTheirs
-          getListOfMoves:GetListOfMoves
+          transformTheirBoardToMine:TransformTheirBoardToMine
           printBoard:PrintBoard
           addMoveToDisjointSets:AddMoveToDisjointSets
           moveExists:MoveExists
@@ -79,8 +79,7 @@ define
           case Msg of generateMove(Board Color TurnsUntilSwap Move) then
               {System.showInfo 'Turns until swap: ' # TurnsUntilSwap}
               local V GeneratedMove MoveList in
-                MoveList = {GetListOfMoves Board 1 1} /* Transforming their board to my representation */
-
+                MoveList = {TransformTheirBoardToMine Board} /* Offset x and y by one for compatibility with other users */
                 if TurnsUntilSwap > 0 andthen TurnsUntilSwap < 7 then
                   {GenerateAlphaBetaMove MoveList Color ~1 ?GeneratedMove ?V}
                 else
@@ -100,11 +99,10 @@ define
     fun {RandomPlayerProc}
       Sin in thread
         for Msg in Sin do
-          /* {Browse Msg} */
           case Msg of generateMove(Board Color _ Move) then
             % Initial version: Generate random move on position that is not yet occupied
             local GeneratedMove MoveList in
-              MoveList = {GetListOfMoves Board 1 1} /* Transforming their board to my representation */
+              MoveList = {TransformTheirBoardToMine Board} /* Offset x and y by one for compatibility with other users */
               {GenerateRandomMove MoveList Color ?GeneratedMove}
               Move = {TransformMyMoveToTheirs GeneratedMove}
             end

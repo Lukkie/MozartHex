@@ -6,6 +6,8 @@ import
 export
   transformTheirMoveToMine:TransformTheirMoveToMine
   transformMyMoveToTheirs:TransformMyMoveToTheirs
+  transformTheirBoardToMine:TransformTheirBoardToMine
+  transformMyBoardToTheirs:TransformMyBoardToTheirs
   getListOfMoves:GetListOfMoves
   getListOfLists:GetListOfLists
   printBoard:PrintBoard
@@ -86,6 +88,24 @@ define
       end
     end
 
+    fun {TransformTheirBoardToMine Board}
+      case Board of move(x:X y:Y color:C)|BoardRest then
+        {TransformTheirMoveToMine move(x:X y:Y color:C)} | {TransformTheirBoardToMine BoardRest}
+      [] nil then
+        nil
+      end
+    end
+
+    fun {TransformMyBoardToTheirs Board}
+      case Board of move(x:X y:Y color:C)|BoardRest then
+        {TransformMyMoveToTheirs move(x:X y:Y color:C)} | {TransformMyBoardToTheirs BoardRest}
+      [] nil then
+        nil
+      end
+    end
+
+
+    /** Old convention, not used anymore, keeping it here just in case **/
     fun {GetListOfMoves Board X Y}
       /* Transform (their) list of lists into (my) list of moves */
       /* Initialize with X = 1 and Y = 1 */
@@ -112,6 +132,7 @@ define
       end
     end
 
+    /** Old convention, not used anymore, keeping it here just in case **/
     fun {GetListOfLists BoardList}
       local ListOfLists in
         {List.make BOARD_SIZE ListOfLists}
@@ -128,6 +149,7 @@ define
       end
     end
 
+    /** Old convention, not used anymore, keeping it here just in case **/
     fun {DoesBoardListContain BoardList X Y}
     /** X and Y are offset by one in my code! **/
       case BoardList of move(x:MoveX y:MoveY color:MoveColor)|BoardListRest then
