@@ -9,7 +9,7 @@ import
           addMoveToDisjointSets:AddMoveToDisjointSets
           moveExists:MoveExists
           determineWinner:DetermineWinner
-          moveOutOfBounds:MoveOutOfBounds ) at 'board.ozf'
+          moveOutOfBounds:MoveOutOfBounds ) at 'board_utils.ozf'
 export
   referee:RefereeProc
 define
@@ -91,7 +91,8 @@ define
           TheirBoard = {TransformMyBoardToTheirs Board}
           % Ask for move
           {Send CurrentPlayerPort generateMove(TheirBoard CurrentPlayerColor TurnsUntilSwap GeneratedMove)}
-
+          /* {Browse Move} */
+          {Time.delay 5000}
           % Transform their move to my representation
           Move = {TransformTheirMoveToMine GeneratedMove}
 

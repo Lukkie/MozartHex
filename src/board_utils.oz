@@ -75,7 +75,7 @@ define
     fun {TransformTheirMoveToMine TheirMove}
       /* My moves have range between 0 and BOARD_LENGTH - 1
       Other people's moves start at 1 and end at BOARD_LENGTH */
-      case TheirMove of move(x:X y:Y color:C) then
+      case TheirMove of move(row:Y column:X color:C) then
         move(x:X-1 y:Y-1 color:C)
       end
     end
@@ -84,13 +84,13 @@ define
       /* My moves have range between 0 and BOARD_LENGTH - 1
       Other people's moves start at 1 and end at BOARD_LENGTH */
       case MyMove of move(x:X y:Y color:C) then
-        move(x:X+1 y:Y+1 color:C)
+        move(row:Y+1 column:X+1 color:C)
       end
     end
 
     fun {TransformTheirBoardToMine Board}
-      case Board of move(x:X y:Y color:C)|BoardRest then
-        {TransformTheirMoveToMine move(x:X y:Y color:C)} | {TransformTheirBoardToMine BoardRest}
+      case Board of move(row:Y column:X color:C)|BoardRest then
+        {TransformTheirMoveToMine move(row:Y column:X color:C)} | {TransformTheirBoardToMine BoardRest}
       [] nil then
         nil
       end

@@ -16,7 +16,7 @@ import
           printBoard:PrintBoard
           addMoveToDisjointSets:AddMoveToDisjointSets
           moveExists:MoveExists
-          determineWinner:DetermineWinner ) at 'board.ozf'
+          determineWinner:DetermineWinner ) at 'board_utils.ozf'
 export
   player:PlayerProc
   randomPlayer:RandomPlayerProc
